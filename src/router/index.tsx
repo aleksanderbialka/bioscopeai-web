@@ -5,8 +5,18 @@ import AppLayout from "../layouts/AppLayout";
 const DashboardPage = lazy(() => import("../pages/DashboardPage"));
 const DevicesPage = lazy(() => import("../pages/DevicesPage"));
 const StreamPage = lazy(() => import("../pages/StreamPage"));
+const LoginPage = lazy(() => import("../pages/LoginPage"));
+const RegisterPage = lazy(() => import("../pages/RegisterPage"));
 
 export const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
+  },
   {
     path: "/",
     element: <AppLayout />,

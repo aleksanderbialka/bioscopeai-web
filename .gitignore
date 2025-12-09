@@ -25,3 +25,7 @@ dist-ssr
 
 # Github
 copilot-instructions.md
+
+# Configuration files
+.env
+.env.test
