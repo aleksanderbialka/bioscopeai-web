@@ -1,5 +1,8 @@
 import { useDevices } from "../../hooks/useDevices";
 import { DeviceCard } from "./DeviceCard";
+import { LoadingSpinner } from "../../../../components/Loading";
+import { Alert } from "../../../../components/Alert";
+import { Button } from "../../../../components/Button";
 
 interface DeviceListProps {
   onDeviceSelect?: (deviceId: string) => void;
@@ -10,31 +13,23 @@ export function DeviceList({ onDeviceSelect }: DeviceListProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading devices...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center py-12">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-600 mt-4">Loading devices...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+      <Alert variant="error" title="Error loading devices">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-red-800 font-semibold mb-2">Error loading devices</h3>
-            <p className="text-red-600 text-sm">{error}</p>
-          </div>
-          <button
-            onClick={refetch}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
+          <p>{error}</p>
+          <Button variant="danger" size="sm" onClick={refetch}>
             Retry
-          </button>
+          </Button>
         </div>
-      </div>
+      </Alert>
     );
   }
 
@@ -53,12 +48,9 @@ export function DeviceList({ onDeviceSelect }: DeviceListProps) {
         <h2 className="text-2xl font-bold text-gray-900">
           {devices.length} {devices.length === 1 ? "Device" : "Devices"}
         </h2>
-        <button
-          onClick={refetch}
-          className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
-        >
+        <Button variant="primary" size="md" onClick={refetch}>
           Refresh
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

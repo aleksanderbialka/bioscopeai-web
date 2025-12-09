@@ -1,17 +1,23 @@
 import { Outlet } from "react-router-dom";
-import { Header } from "./components/Header";
+import { Sidebar } from "./components/Sidebar";
+import { Footer } from "./components/Footer";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 
 export default function AppLayout() {
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
-        <Header />
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar />
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto p-6">
-          <Outlet />
-        </main>
+        <div className="flex-1 flex flex-col">
+          <main className="flex-1 p-8">
+            <div className="max-w-7xl mx-auto">
+              <Outlet />
+            </div>
+          </main>
+          <Footer />
+        </div>
       </div>
     </ProtectedRoute>
   );
