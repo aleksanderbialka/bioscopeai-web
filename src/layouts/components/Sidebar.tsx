@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Monitor,
+  Database,
   Video,
   LogOut,
   User,
@@ -33,6 +34,11 @@ export function Sidebar() {
         <NavLink to="/devices" className={linkClass}>
           <Monitor className="w-5 h-5" />
           <span className="font-medium">Devices</span>
+        </NavLink>
+
+        <NavLink to="/datasets" className={linkClass}>
+          <Database className="w-5 h-5" />
+          <span className="font-medium">Datasets</span>
         </NavLink>
 
         <NavLink to="/stream" className={linkClass}>
