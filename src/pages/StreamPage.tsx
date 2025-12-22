@@ -15,6 +15,7 @@ function StreamPage() {
   const { stream, isConnected, isConnecting, error, stats, connect, disconnect } =
     useWebRTC({
       wsUrl,
+      debug: true,
     });
 
   return (

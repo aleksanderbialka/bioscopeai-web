@@ -1,230 +1,415 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { WebRTCConfig, StreamStats } from "../types/stream.types";
+import type {
+  WebRTCConfig,
+  StreamStats,
+  SignalingMessage,
+  ConnectionState,
+  UseWebRTCProps,
+} from "../types/stream.types";
+import { ConnectionState as ConnectionStateEnum } from "../types/stream.types";
 
-interface UseWebRTCProps {
-  wsUrl: string;
-  config?: WebRTCConfig;
-}
+const DEFAULT_CONFIG: WebRTCConfig = {
+  iceServers: [
+    {
+      urls: ["turn:localhost:3478?transport=tcp"],
+      username: "dev",
+      credential: "devpass",
+    },
+  ],
+  iceTransportPolicy: "relay",
+  iceCandidatePoolSize: 10,
+};
 
-export function useWebRTC({ wsUrl, config }: UseWebRTCProps) {
+const DEFAULT_RECONNECT_DELAY = 3000;
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
+const DEFAULT_STATS_INTERVAL = 1000;
+
+export function useWebRTC({
+  wsUrl,
+  config,
+  autoReconnect = true,
+  reconnectDelay = DEFAULT_RECONNECT_DELAY,
+  maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS,
+  statsInterval = DEFAULT_STATS_INTERVAL,
+  debug = false,
+}: UseWebRTCProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState>(
+    ConnectionStateEnum.DISCONNECTED
+  );
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<StreamStats | null>(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const statsIntervalRef = useRef<number | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const isCleaningUpRef = useRef(false);
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const connectFnRef = useRef<(() => Promise<void>) | null>(null);
+
+  const log = useCallback(
+    (level: "info" | "warn" | "error", message: string, ...args: unknown[]) => {
+      if (!debug && level === "info") return;
+      console[level](`[WebRTC]`, message, ...args);
+    },
+    [debug]
+  );
 
   const collectStats = useCallback(async () => {
-    if (!peerConnectionRef.current) return;
+    const pc = peerConnectionRef.current;
+    if (!pc) return;
 
     try {
-      const stats = await peerConnectionRef.current.getStats();
-      let bytesReceived = 0;
-      let packetsReceived = 0;
-      let packetsLost = 0;
-      let framesPerSecond = 0;
-
-      stats.forEach((report) => {
+      const statsReport = await pc.getStats();
+      
+      for (const report of statsReport.values()) {
         if (report.type === "inbound-rtp" && report.kind === "video") {
-          bytesReceived = report.bytesReceived || 0;
-          packetsReceived = report.packetsReceived || 0;
-          packetsLost = report.packetsLost || 0;
-          framesPerSecond = report.framesPerSecond || 0;
+          setStats({
+            bytesReceived: report.bytesReceived || 0,
+            packetsReceived: report.packetsReceived || 0,
+            packetsLost: report.packetsLost || 0,
+            framesPerSecond: report.framesPerSecond || 0,
+            timestamp: Date.now(),
+          });
+          return;
         }
-      });
-
-      setStats({
-        bytesReceived,
-        packetsReceived,
-        packetsLost,
-        framesPerSecond,
-        timestamp: Date.now(),
-      });
+      }
     } catch (err) {
-      console.error("Failed to collect stats:", err);
+      if (debug) console.error("[WebRTC]", "Stats collection failed", err);
+    }
+  }, [debug]);
+
+  const startStatsCollection = useCallback(() => {
+    if (statsIntervalRef.current) return;
+    statsIntervalRef.current = setInterval(collectStats, statsInterval);
+  }, [collectStats, statsInterval]);
+
+  const stopStatsCollection = useCallback(() => {
+    if (statsIntervalRef.current) {
+      clearInterval(statsIntervalRef.current);
+      statsIntervalRef.current = null;
+      setStats(null);
     }
   }, []);
 
-  // Initialize WebRTC connection
-  const connect = useCallback(async () => {
-    setIsConnecting(true);
-    setError(null);
+  const sendSignalingMessage = useCallback(
+    (message: SignalingMessage) => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log("warn", "Cannot send message - WebSocket not ready", message.type);
+        return false;
+      }
 
-    const defaultConfig: WebRTCConfig = {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" },
-      ],
-    };
-    
-    console.log("Using ICE servers:", config || defaultConfig);
+      try {
+        ws.send(JSON.stringify(message));
+        log("info", "Sent", message.type);
+        return true;
+      } catch (err) {
+        log("error", "Failed to send message", err);
+        return false;
+      }
+    },
+    [log]
+  );
 
-    try {
-      // Create WebSocket connection
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+  const handleIceCandidate = useCallback(
+    (event: RTCPeerConnectionIceEvent) => {
+      if (event.candidate) {
+        log("info", "ICE candidate", event.candidate.type, event.candidate.protocol);
 
-      ws.onopen = () => {
-        console.log("WebSocket connected");
-      };
+        sendSignalingMessage({
+          type: "ice-candidate",
+          candidate: event.candidate.candidate,
+          sdp_mid: event.candidate.sdpMid ?? undefined,
+          sdp_m_line_index: event.candidate.sdpMLineIndex ?? undefined,
+        });
+      } else {
+        log("info", "ICE gathering complete");
+        sendSignalingMessage({
+          type: "ice-candidate",
+          candidate: null,
+        });
+      }
+    },
+    [sendSignalingMessage, log]
+  );
 
-      ws.onerror = (event) => {
-        console.error("WebSocket error:", event);
-        setError("WebSocket connection failed");
-        setIsConnecting(false);
-      };
+  const handleIceConnectionStateChange = useCallback(() => {
+    const pc = peerConnectionRef.current;
+    if (!pc) return;
 
-      ws.onclose = () => {
-        console.log("WebSocket closed");
-        setIsConnected(false);
-      };
+    log("info", "ICE state", pc.iceConnectionState);
 
-      // Create peer connection
-      const pc = new RTCPeerConnection(config || defaultConfig);
-      peerConnectionRef.current = pc;
+    if (pc.iceConnectionState === "failed" && autoReconnect) {
+      log("error", "ICE failed - attempting restart");
+      pc.restartIce();
+    }
+  }, [log, autoReconnect]);
 
-      pc.ontrack = (event) => {
-        console.log("Received remote track:", event.track.kind);
-        const [remoteStream] = event.streams;
-        setStream(remoteStream);
-        setIsConnected(true);
-        setIsConnecting(false);
+  const processPendingCandidates = useCallback(async () => {
+    const pc = peerConnectionRef.current;
+    if (!pc?.remoteDescription) return;
 
-        statsIntervalRef.current = window.setInterval(collectStats, 1000);
-      };
+    const candidates = pendingCandidatesRef.current;
+    if (candidates.length === 0) return;
 
-      // Handle ICE candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate && ws.readyState === WebSocket.OPEN) {
-          console.log("Sending ICE candidate:", event.candidate);
-          ws.send(
-            JSON.stringify({
-              type: "ice-candidate",
-              candidate: `candidate:${event.candidate.candidate}`,
-              sdp_mid: event.candidate.sdpMid,
-              sdp_m_line_index: event.candidate.sdpMLineIndex,
-            })
-          );
-        } else if (!event.candidate && ws.readyState === WebSocket.OPEN) {
-          console.log("ICE gathering complete, sending end-of-candidates");
-          ws.send(
-            JSON.stringify({
-              type: "ice-candidate",
-              candidate: null,
-            })
-          );
-        }
-      };
+    log("info", `Processing ${candidates.length} pending candidates`);
+    pendingCandidatesRef.current = [];
 
-      pc.oniceconnectionstatechange = () => {
-        console.log("ICE connection state:", pc.iceConnectionState);
-      };
+    await Promise.allSettled(
+      candidates.map(candidate => 
+        pc.addIceCandidate(new RTCIceCandidate(candidate))
+          .catch(err => log("error", "Failed to add pending candidate", err))
+      )
+    );
+  }, [log]);
 
-      pc.onconnectionstatechange = () => {
-        console.log("Connection state:", pc.connectionState);
-        if (pc.connectionState === "connected") {
-          console.log("WebRTC connected successfully!");
-        } else if (pc.connectionState === "failed") {
-          console.error("Connection failed. ICE state:", pc.iceConnectionState);
-          setError("WebRTC connection failed - ICE connectivity issue");
-          setIsConnected(false);
-          setIsConnecting(false);
-        } else if (pc.connectionState === "disconnected") {
-          console.warn("Connection disconnected");
-          setIsConnected(false);
-        }
-      };
+  const handleSignalingMessage = useCallback(
+    async (data: string) => {
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
 
-      // Handle WebSocket messages
-      ws.onmessage = async (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log("Received WebSocket message:", message.type);
+      try {
+        const message: SignalingMessage = JSON.parse(data);
+        log("info", "Received", message.type);
 
-          if (message.type === "answer") {
-            // Receive answer from server
-            console.log("Received answer from server");
+        switch (message.type) {
+          case "answer":
+            if (!message.sdp) {
+              log("error", "Answer missing SDP");
+              break;
+            }
+
             await pc.setRemoteDescription(
               new RTCSessionDescription({
                 type: "answer",
                 sdp: message.sdp,
               })
             );
-            console.log("Remote description set successfully");
-          } else if (message.type === "ice-candidate") {
-            // Add ICE candidate from server
+
+            await processPendingCandidates();
+            break;
+
+          case "ice-candidate":
             if (message.candidate) {
-              console.log("Received ICE candidate from server:", message.candidate);
-              await pc.addIceCandidate(
-                new RTCIceCandidate({
-                  candidate: message.candidate,
-                  sdpMid: message.sdp_mid,
-                  sdpMLineIndex: message.sdp_m_line_index,
-                })
-              );
-              console.log("ICE candidate added successfully");
-            } else {
-              console.log("Received end-of-candidates from server");
+              const candidateString = typeof message.candidate === "string" && 
+                !message.candidate.startsWith("candidate:") 
+                  ? `candidate:${message.candidate}`
+                  : message.candidate;
+
+              const candidateInit: RTCIceCandidateInit = {
+                candidate: candidateString,
+                sdpMid: message.sdp_mid,
+                sdpMLineIndex: message.sdp_m_line_index,
+              };
+
+              if (!pc.remoteDescription) {
+                pendingCandidatesRef.current.push(candidateInit);
+              } else {
+                await pc.addIceCandidate(new RTCIceCandidate(candidateInit))
+                  .catch(err => log("error", "Failed to add ICE candidate", err));
+              }
             }
-          } else if (message.type === "pong") {
-            // Heartbeat response
-            console.log("Received pong from server");
-          }
-        } catch (err) {
-          console.error("Error handling WebSocket message:", err);
-          setError("Failed to process signaling message");
+            break;
+
+          case "pong":
+            break;
+
+          default:
+            log("warn", "Unknown message type", message.type);
         }
-      };
+      } catch (err) {
+        log("error", "Failed to handle message", err);
+        setError("Failed to process signaling message");
+      }
+    },
+    [log, processPendingCandidates]
+  );
 
-      ws.onopen = async () => {
-        console.log("WebSocket connected, creating offer...");
-        
-        try {
-          // Create offer with explicit constraints (browser is the offerer)
-          const offer = await pc.createOffer({
-            offerToReceiveAudio: false,
-            offerToReceiveVideo: true,
-          });
-          console.log("Offer created, setting local description...");
-          
-          await pc.setLocalDescription(offer);
-          console.log("Local description set, ICE state:", pc.iceGatheringState);
+  const createOffer = useCallback(async () => {
+    const pc = peerConnectionRef.current;
+    const ws = wsRef.current;
 
-          console.log("Sending offer to server...");
-          ws.send(
-            JSON.stringify({
-              type: "offer",
-              sdp: pc.localDescription?.sdp,
-            })
-          );
+    if (!pc || !ws || ws.readyState !== WebSocket.OPEN) {
+      log("error", "Cannot create offer - not ready");
+      return;
+    }
 
-          console.log("Offer sent successfully. ICE candidates will be sent as they arrive.");
-        } catch (err) {
-          console.error("Failed to create offer:", err);
-          setError("Failed to create WebRTC offer");
-          setIsConnecting(false);
-        }
-      };
+    try {
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: false,
+        offerToReceiveVideo: true,
+      });
+
+      await pc.setLocalDescription(offer);
+
+      sendSignalingMessage({
+        type: "offer",
+        sdp: pc.localDescription?.sdp,
+      });
+
+      log("info", "Offer sent");
     } catch (err) {
-      console.error("Failed to connect:", err);
+      log("error", "Failed to create offer", err);
+      setError("Failed to create offer");
+      setConnectionState(ConnectionStateEnum.FAILED);
+    }
+  }, [sendSignalingMessage, log]);
+
+  const connect = useCallback(async () => {
+    if (
+      connectionState === ConnectionStateEnum.CONNECTING ||
+      connectionState === ConnectionStateEnum.CONNECTED
+    ) {
+      log("warn", "Already connected or connecting");
+      return;
+    }
+
+    log("info", "Connecting...");
+    setConnectionState(ConnectionStateEnum.CONNECTING);
+    setError(null);
+    isCleaningUpRef.current = false;
+
+    const scheduleReconnect = () => {
+      if (
+        !autoReconnect ||
+        reconnectAttempts >= maxReconnectAttempts ||
+        reconnectTimeoutRef.current
+      ) {
+        return;
+      }
+
+      const attempt = reconnectAttempts + 1;
+      setReconnectAttempts(attempt);
+
+      log("info", `Reconnecting (${attempt}/${maxReconnectAttempts}) in ${reconnectDelay}ms`);
+      setConnectionState(ConnectionStateEnum.RECONNECTING);
+
+      reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        connectFnRef.current?.();
+      }, reconnectDelay);
+    };
+
+    const handleTrack = (event: RTCTrackEvent) => {
+      log("info", "Received track", event.track.kind);
+      const [remoteStream] = event.streams;
+      
+      if (remoteStream) {
+        setStream(remoteStream);
+        setConnectionState(ConnectionStateEnum.CONNECTED);
+      }
+    };
+
+    const handleConnectionStateChange = () => {
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
+
+      log("info", "Connection state", pc.connectionState);
+
+      switch (pc.connectionState) {
+        case "connected":
+          setConnectionState(ConnectionStateEnum.CONNECTED);
+          setError(null);
+          setReconnectAttempts(0);
+          startStatsCollection();
+          break;
+
+        case "connecting":
+          setConnectionState(ConnectionStateEnum.CONNECTING);
+          break;
+
+        case "disconnected":
+          setConnectionState(ConnectionStateEnum.DISCONNECTED);
+          stopStatsCollection();
+          break;
+
+        case "failed":
+          log("error", "Connection failed");
+          setConnectionState(ConnectionStateEnum.FAILED);
+          setError("Connection failed - check network");
+          stopStatsCollection();
+          scheduleReconnect();
+          break;
+
+        case "closed":
+          setConnectionState(ConnectionStateEnum.DISCONNECTED);
+          stopStatsCollection();
+          break;
+      }
+    };
+
+    const setupWebSocket = (ws: WebSocket) => {
+      ws.onopen = () => {
+        log("info", "WebSocket connected");
+        createOffer();
+      };
+
+      ws.onmessage = (event) => {
+        handleSignalingMessage(event.data);
+      };
+
+      ws.onerror = () => {
+        log("error", "WebSocket error");
+        setError("WebSocket connection failed");
+        setConnectionState(ConnectionStateEnum.FAILED);
+      };
+
+      ws.onclose = () => {
+        log("info", "WebSocket closed");
+        if (!isCleaningUpRef.current) {
+          setConnectionState(ConnectionStateEnum.DISCONNECTED);
+          scheduleReconnect();
+        }
+      };
+    };
+
+    const setupPeerConnection = (pc: RTCPeerConnection) => {
+      pc.ontrack = handleTrack;
+      pc.onicecandidate = handleIceCandidate;
+      pc.oniceconnectionstatechange = handleIceConnectionStateChange;
+      pc.onconnectionstatechange = handleConnectionStateChange;
+    };
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      const rtcConfig = config || DEFAULT_CONFIG;
+      const pc = new RTCPeerConnection(rtcConfig);
+      peerConnectionRef.current = pc;
+
+      setupWebSocket(ws);
+      setupPeerConnection(pc);
+    } catch (err) {
+      log("error", "Connection failed", err);
       setError(err instanceof Error ? err.message : "Connection failed");
-      setIsConnecting(false);
+      setConnectionState(ConnectionStateEnum.FAILED);
     }
-  }, [wsUrl, config, collectStats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wsUrl, config]);
 
-  // Disconnect and cleanup
+  useEffect(() => {
+    connectFnRef.current = connect;
+  }, [connect]);
+
   const disconnect = useCallback(() => {
-    if (statsIntervalRef.current) {
-      window.clearInterval(statsIntervalRef.current);
-      statsIntervalRef.current = null;
+    log("info", "Disconnecting...");
+    isCleaningUpRef.current = true;
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
 
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "bye" }));
+    stopStatsCollection();
+
+    if (wsRef.current) {
+      if (wsRef.current.readyState === WebSocket.OPEN) {
+        sendSignalingMessage({ type: "bye" });
+      }
       wsRef.current.close();
       wsRef.current = null;
     }
@@ -235,12 +420,12 @@ export function useWebRTC({ wsUrl, config }: UseWebRTCProps) {
     }
 
     setStream(null);
-    setIsConnected(false);
-    setIsConnecting(false);
-    setStats(null);
-  }, []);
+    setConnectionState(ConnectionStateEnum.DISCONNECTED);
+    setError(null);
+    setReconnectAttempts(0);
+    pendingCandidatesRef.current = [];
+  }, [log, sendSignalingMessage, stopStatsCollection]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       disconnect();
@@ -249,10 +434,14 @@ export function useWebRTC({ wsUrl, config }: UseWebRTCProps) {
 
   return {
     stream,
-    isConnected,
-    isConnecting,
+    connectionState,
+    isConnected: connectionState === ConnectionStateEnum.CONNECTED,
+    isConnecting:
+      connectionState === ConnectionStateEnum.CONNECTING ||
+      connectionState === ConnectionStateEnum.RECONNECTING,
     error,
     stats,
+    reconnectAttempts,
     connect,
     disconnect,
   };
