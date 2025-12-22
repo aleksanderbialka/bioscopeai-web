@@ -1,21 +1,33 @@
 import { createBrowserRouter } from "react-router-dom";
 import { lazy } from "react";
 import AppLayout from "../layouts/AppLayout";
+import { PublicRoute } from "../components/PublicRoute";
 
 const DashboardPage = lazy(() => import("../pages/DashboardPage"));
 const DevicesPage = lazy(() => import("../pages/DevicesPage"));
+const DatasetsPage = lazy(() => import("../pages/DatasetsPage"));
+const DatasetDetailsPage = lazy(() => import("../pages/DatasetDetailsPage"));
 const StreamPage = lazy(() => import("../pages/StreamPage"));
 const LoginPage = lazy(() => import("../pages/LoginPage"));
 const RegisterPage = lazy(() => import("../pages/RegisterPage"));
+const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 
 export const router = createBrowserRouter([
   {
     path: "/login",
-    element: <LoginPage />,
+    element: (
+      <PublicRoute>
+        <LoginPage />
+      </PublicRoute>
+    ),
   },
   {
     path: "/register",
-    element: <RegisterPage />,
+    element: (
+      <PublicRoute>
+        <RegisterPage />
+      </PublicRoute>
+    ),
   },
   {
     path: "/",
@@ -30,9 +42,21 @@ export const router = createBrowserRouter([
         element: <DevicesPage />,
       },
       {
+        path: "datasets",
+        element: <DatasetsPage />,
+      },
+      {
+        path: "datasets/:datasetId",
+        element: <DatasetDetailsPage />,
+      },
+      {
         path: "stream",
         element: <StreamPage />,
       },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />,
   },
 ]);

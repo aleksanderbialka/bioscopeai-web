@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Microscope } from "lucide-react";
+import { Logo } from "../../../components/Logo";
 
 interface AuthCardProps {
   subtitle: string;
@@ -18,19 +18,9 @@ export function AuthCard({ subtitle, children }: AuthCardProps) {
       {/* Card */}
       <div className="relative bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-full max-w-md border border-white/20 animate-[fadeIn_0.5s_ease-out]">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-sky-500 to-blue-600 rounded-2xl mb-4 shadow-lg">
-            <Microscope className="w-8 h-8 text-white" strokeWidth={2} />
-          </div>
-          <h1 className="brand-title text-5xl mb-2">
-            <span className="bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-600 bg-clip-text text-transparent inline-block transform hover:scale-105 transition-transform duration-300">
-              BioScope
-            </span>
-            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent inline-block ml-1 transform hover:scale-105 transition-transform duration-300">
-              AI
-            </span>
-          </h1>
-          <p className="text-gray-600 text-sm">{subtitle}</p>
+        <div className="mb-8 transform hover:scale-105 transition-transform duration-300">
+          <Logo size="lg" showIcon={true} centered={true} />
+          <p className="text-gray-600 text-sm mt-4 text-center">{subtitle}</p>
         </div>
         {children}
       </div>
