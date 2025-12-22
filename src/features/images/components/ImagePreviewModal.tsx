@@ -1,5 +1,11 @@
-import { Download, Calendar, Database, FileText, CheckCircle, XCircle, Monitor } from "lucide-react";
+import { useState } from "react";
+import { Download, Calendar, FileText, CheckCircle, XCircle, Monitor, Sparkles } from "lucide-react";
 import { Badge } from "../../../components/Badge";
+import { useImageResults } from "../../classifications/hooks/useClassificationResults";
+import { useClassifications } from "../../classifications/hooks/useClassifications";
+import { ClassifyImageModal } from "../../classifications/components/ClassifyImageModal";
+import { ClassificationResultCard } from "../../classifications/components/ClassificationResultCard";
+import { LoadingSpinner } from "../../../components/Loading";
 import type { Image } from "../types/image.types";
 
 interface ImagePreviewModalProps {
@@ -9,6 +15,13 @@ interface ImagePreviewModalProps {
 }
 
 export function ImagePreviewModal({ image, isOpen, onClose }: ImagePreviewModalProps) {
+  const [isClassifyModalOpen, setIsClassifyModalOpen] = useState(false);
+  
+  const { results, isLoading: resultsLoading, refetch: refetchResults } = useImageResults(
+    isOpen ? image?.id || null : null
+  );
+  const { runClassification } = useClassifications();
+
   if (!image || !isOpen) return null;
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -21,6 +34,11 @@ export function ImagePreviewModal({ image, isOpen, onClose }: ImagePreviewModalP
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleClassify = async (params: { image_id?: string; model_name?: string }) => {
+    await runClassification(params);
+    setTimeout(() => refetchResults(), 1000); // Refetch results after a delay
   };
 
   const formatDate = (dateString: string) => {
@@ -52,13 +70,22 @@ export function ImagePreviewModal({ image, isOpen, onClose }: ImagePreviewModalP
             <FileText className="w-6 h-6 text-blue-400 flex-shrink-0" />
             <h2 className="text-xl font-semibold text-slate-100 truncate">{image.filename || "Bez nazwy"}</h2>
           </div>
-          <button
-            onClick={handleDownload}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ml-4 flex-shrink-0"
-          >
-            <Download className="w-4 h-4" />
-            Pobierz
-          </button>
+          <div className="flex gap-2 ml-4 flex-shrink-0">
+            <button
+              onClick={() => setIsClassifyModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              Klasyfikuj
+            </button>
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Pobierz
+            </button>
+          </div>
         </div>
 
         {/* Image Container */}
@@ -118,21 +145,30 @@ export function ImagePreviewModal({ image, isOpen, onClose }: ImagePreviewModalP
                 </div>
               )}
 
-              {/* Dataset ID */}
-              <div className="p-4 bg-slate-800 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <Database className="w-5 h-5 text-blue-400 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-slate-400 mb-1">Dataset ID</p>
-                    <p className="text-xs font-mono text-slate-300 break-all">{image.dataset_id}</p>
+              {/* Classification Results */}
+              <div className="pt-4 border-t border-slate-700">
+                <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-4">
+                  Wyniki klasyfikacji
+                </h3>
+                {resultsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <LoadingSpinner />
                   </div>
-                </div>
-              </div>
-
-              {/* Image ID */}
-              <div className="p-4 bg-slate-800/50 rounded-xl">
-                <p className="text-xs text-slate-400 mb-2">Image ID</p>
-                <p className="text-xs font-mono text-slate-300 break-all">{image.id}</p>
+                ) : results.length > 0 ? (
+                  <div className="space-y-3">
+                    {results.map((result) => (
+                      <ClassificationResultCard key={result.id} result={result} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Sparkles className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                    <p className="text-sm text-slate-400">Brak wyników klasyfikacji</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Uruchom klasyfikację aby zobaczyć wyniki
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -148,6 +184,15 @@ export function ImagePreviewModal({ image, isOpen, onClose }: ImagePreviewModalP
           </button>
         </div>
       </div>
+
+      {/* Classify Modal */}
+      <ClassifyImageModal
+        isOpen={isClassifyModalOpen}
+        onClose={() => setIsClassifyModalOpen(false)}
+        onSubmit={handleClassify}
+        imageId={image.id}
+        type="image"
+      />
     </div>
   );
 }
