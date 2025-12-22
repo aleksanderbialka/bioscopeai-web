@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, Database, Calendar, User } from "lucide-react";
+import { ArrowLeft, Upload, Database, Calendar, User, Sparkles } from "lucide-react";
 import { useDataset } from "../features/datasets/hooks/useDatasets";
 import { useImages } from "../features/images/hooks/useImages";
+import { useClassifications } from "../features/classifications/hooks/useClassifications";
 import { ImageList } from "../features/images/components/ImageList";
 import { ImageUploadModal } from "../features/images/components/ImageUploadModal";
 import { ImagePreviewModal } from "../features/images/components/ImagePreviewModal";
+import { ClassifyImageModal } from "../features/classifications/components/ClassifyImageModal";
 import { Button } from "../components/Button";
 import { Card, CardBody } from "../components/Card";
 import { LoadingSpinner } from "../components/Loading";
@@ -30,7 +32,10 @@ function DatasetDetailsPage() {
     deleteImage,
   } = useImages(imageParams);
 
+  const { runClassification } = useClassifications();
+
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isClassifyModalOpen, setIsClassifyModalOpen] = useState(false);
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<Image | null>(null);
 
@@ -38,6 +43,10 @@ function DatasetDetailsPage() {
     if (!deletingImageId) return;
     await deleteImage(deletingImageId);
     setDeletingImageId(null);
+  };
+
+  const handleClassifyDataset = async (params: { dataset_id?: string; model_name?: string }) => {
+    await runClassification(params);
   };
 
   if (datasetLoading) {
@@ -78,10 +87,16 @@ function DatasetDetailsPage() {
             <p className="text-gray-600 mt-1">{dataset.description}</p>
           )}
         </div>
-        <Button onClick={() => setIsUploadModalOpen(true)}>
-          <Upload className="w-4 h-4 mr-2" />
-          Upload Images
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setIsClassifyModalOpen(true)}>
+            <Sparkles className="w-4 h-4 mr-2" />
+            Klasyfikuj dataset
+          </Button>
+          <Button onClick={() => setIsUploadModalOpen(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Images
+          </Button>
+        </div>
       </div>
 
       {/* Dataset Info */}
@@ -143,6 +158,15 @@ function DatasetDetailsPage() {
         onClose={() => setIsUploadModalOpen(false)}
         onSubmit={uploadImage}
         datasetId={datasetId!}
+      />
+
+      {/* Classify Dataset Modal */}
+      <ClassifyImageModal
+        isOpen={isClassifyModalOpen}
+        onClose={() => setIsClassifyModalOpen(false)}
+        onSubmit={handleClassifyDataset}
+        datasetId={datasetId}
+        type="dataset"
       />
 
       {/* Preview Modal */}
