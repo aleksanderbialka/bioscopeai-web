@@ -112,17 +112,26 @@ export async function deleteImage(imageId: string): Promise<void> {
   }
 }
 
-export function getImageFileUrl(imageId: string, download = false): string {
+export async function getImageFileUrl(imageId: string, expiresIn = 3600): Promise<string> {
   const token = getAuthToken();
   const params = new URLSearchParams();
   
-  if (download) {
-    params.append("download", "true");
-  }
-  
-  if (token) {
-    params.append("token", token);
+  if (expiresIn !== 3600) {
+    params.append("expires_in", String(expiresIn));
   }
 
-  return `${API_BASE_URL}/api/images/${imageId}/file?${params.toString()}`;
+  const url = `${API_BASE_URL}/api/images/${imageId}/preview?${params.toString()}`;
+  
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to get image preview URL: ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  return data.url;
 }
