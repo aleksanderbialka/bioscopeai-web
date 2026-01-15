@@ -8,6 +8,7 @@ const DevicesPage = lazy(() => import("../pages/DevicesPage"));
 const DatasetsPage = lazy(() => import("../pages/DatasetsPage"));
 const DatasetDetailsPage = lazy(() => import("../pages/DatasetDetailsPage"));
 const StreamPage = lazy(() => import("../pages/StreamPage"));
+const AdminPage = lazy(() => import("../pages/AdminPage"));
 const LoginPage = lazy(() => import("../pages/LoginPage"));
 const RegisterPage = lazy(() => import("../pages/RegisterPage"));
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
@@ -52,6 +53,10 @@ export const router = createBrowserRouter([
       {
         path: "stream",
         element: <StreamPage />,
+      },
+      {
+        path: "admin",
+        element: <AdminPage />,
       },
     ],
   },
