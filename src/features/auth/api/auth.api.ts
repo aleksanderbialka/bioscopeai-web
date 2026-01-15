@@ -1,4 +1,4 @@
-import type { LoginCredentials, RegisterCredentials, TokenResponse, User } from "../types/auth.types";
+import type { LoginCredentials, RegisterCredentials, TokenResponse, User, UserUpdateMe, UserUpdateAdmin } from "../types/auth.types";
 import { apiRequest } from "../../../api/apiClient";
 
 export async function login(credentials: LoginCredentials): Promise<TokenResponse> {
@@ -32,5 +32,30 @@ export async function logout(): Promise<void> {
 export async function getCurrentUser(): Promise<User> {
   return apiRequest<User>("/api/users/me", {
     method: "GET",
+  });
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  return apiRequest<User[]>("/api/users/users", {
+    method: "GET",
+  });
+}
+
+export async function getUserById(userId: string): Promise<User> {
+  return apiRequest<User>(`/api/users/users/${userId}`, {
+    method: "GET",
+  });
+}
+
+export async function updateUser(userId: string, data: UserUpdateMe | UserUpdateAdmin): Promise<User> {
+  return apiRequest<User>(`/api/users/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  return apiRequest<void>(`/api/users/users/${userId}`, {
+    method: "DELETE",
   });
 }
