@@ -23,6 +23,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } catch (error) {
           console.error("Failed to fetch user info:", error);
           localStorage.removeItem("auth_token");
+          localStorage.removeItem("refresh_token");
           setUser(null);
         }
       }
@@ -35,6 +36,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const handleLogin = async (credentials: LoginCredentials) => {
     const response = await authApi.login(credentials);
     localStorage.setItem("auth_token", response.access_token);
+    if (response.refresh_token) {
+      localStorage.setItem("refresh_token", response.refresh_token);
+    }
     
     const userData = await authApi.getCurrentUser();
     setUser(userData);
@@ -56,6 +60,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error("Logout error:", error);
     } finally {
       localStorage.removeItem("auth_token");
+      localStorage.removeItem("refresh_token");
       setUser(null);
     }
   };
