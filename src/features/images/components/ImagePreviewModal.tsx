@@ -32,6 +32,8 @@ export function ImagePreviewModal({ image, isOpen, onClose }: ImagePreviewModalP
     let isMounted = true;
 
     async function loadImageUrl() {
+      if (!image) return;
+      
       try {
         setIsLoadingUrl(true);
         setHasError(false);

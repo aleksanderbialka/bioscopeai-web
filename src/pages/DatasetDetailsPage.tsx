@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Upload, Database, Calendar, User, Sparkles } from "lucide-react";
 import { useDataset } from "../features/datasets/hooks/useDatasets";
 import { useImages } from "../features/images/hooks/useImages";
@@ -18,6 +18,7 @@ import type { Image } from "../features/images/types/image.types";
 function DatasetDetailsPage() {
   const { datasetId } = useParams<{ datasetId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const { dataset, isLoading: datasetLoading, error: datasetError } = useDataset(datasetId!);
   
@@ -38,6 +39,32 @@ function DatasetDetailsPage() {
   const [isClassifyModalOpen, setIsClassifyModalOpen] = useState(false);
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<Image | null>(null);
+
+  // Automatically open modal if imageId is in query params
+  useEffect(() => {
+    const imageIdFromUrl = searchParams.get("imageId");
+    if (imageIdFromUrl && images.length > 0) {
+      const image = images.find((img) => img.id === imageIdFromUrl);
+      if (image) {
+        setPreviewImage(image);
+        // Remove imageId from URL after opening modal
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete("imageId");
+        setSearchParams(newParams, { replace: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [images]);
+
+  const handleClosePreview = () => {
+    setPreviewImage(null);
+    // Clean up URL if imageId is still there
+    if (searchParams.has("imageId")) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("imageId");
+      setSearchParams(newParams, { replace: true });
+    }
+  };
 
   const handleDelete = async () => {
     if (!deletingImageId) return;
@@ -173,7 +200,7 @@ function DatasetDetailsPage() {
       <ImagePreviewModal
         image={previewImage}
         isOpen={!!previewImage}
-        onClose={() => setPreviewImage(null)}
+        onClose={handleClosePreview}
       />
 
       {/* Delete Confirmation */}
