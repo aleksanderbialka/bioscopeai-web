@@ -33,7 +33,7 @@ export function ClassifyImageModal({
       setIsSubmitting(true);
 
       const params: { image_id?: string; dataset_id?: string; model_name?: string } = {
-        model_name: modelName || null,
+        model_name: modelName || undefined,
       };
 
       if (type === "image" && imageId) {
