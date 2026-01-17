@@ -43,3 +43,9 @@ export interface ClassificationResultListParams {
   classification_id?: string | null;
   image_id?: string | null;
 }
+
+export interface DashboardStatistics {
+  classified_last_24_hours: number;
+  average_confidence: number;
+  last_10_results: ClassificationResult[];
+}

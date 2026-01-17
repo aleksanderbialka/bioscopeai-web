@@ -6,6 +6,7 @@ import type {
   ClassificationListParams,
   ClassificationResult,
   ClassificationResultListParams,
+  DashboardStatistics,
 } from "../types/classification.types";
 
 // Classifications
@@ -92,5 +93,12 @@ export async function getResultsForImage(
 ): Promise<ClassificationResult[]> {
   return apiRequest<ClassificationResult[]>(
     `/api/classification-results/image/${imageId}`
+  );
+}
+
+// Dashboard Statistics
+export async function getDashboardStatistics(): Promise<DashboardStatistics> {
+  return apiRequest<DashboardStatistics>(
+    "/api/classification-results/today/statistics"
   );
 }
