@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDashboardStatistics } from "../features/classifications/hooks/useDashboardStatistics";
 import { StatCard } from "../features/classifications/components/StatCard";
 import { RecentClassifications } from "../features/classifications/components/RecentClassifications";
+import { HourlyChart } from "../features/classifications/components/HourlyChart";
 import { LoadingSpinner } from "../components/Loading";
 import { Alert } from "../components/Alert";
 import { getImage } from "../features/images/api/images.api";
@@ -70,6 +71,9 @@ function DashboardPage() {
           color="green"
         />
       </div>
+
+      {/* Hourly Chart */}
+      <HourlyChart data={statistics.hourly_counts} />
 
       {/* Recent Classifications */}
       <RecentClassifications 

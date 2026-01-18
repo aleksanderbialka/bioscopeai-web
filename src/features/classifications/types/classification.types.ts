@@ -48,4 +48,10 @@ export interface DashboardStatistics {
   classified_last_24_hours: number;
   average_confidence: number;
   last_10_results: ClassificationResult[];
+  hourly_counts: HourlyCount[];
+}
+
+export interface HourlyCount {
+  hour: string;
+  count: number;
 }
