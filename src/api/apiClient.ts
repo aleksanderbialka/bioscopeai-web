@@ -4,12 +4,6 @@ interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
 }
 
-interface ApiError {
-  message: string;
-  status: number;
-  detail?: string;
-}
-
 class ApiException extends Error {
   status: number;
   detail?: string;
@@ -106,8 +100,8 @@ export async function apiRequest<T>(
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        // Token expired - try to refresh it
+      if (response.status === 401 && requiresAuth) {
+        // Token expired - try to refresh it (only if auth is required)
         if (!isRefreshing) {
           isRefreshing = true;
           
@@ -183,15 +177,24 @@ export async function apiRequest<T>(
 
       let errorDetail: string | undefined;
       try {
-        const errorData: ApiError = await response.json();
-        errorDetail = errorData.detail || errorData.message;
+        const errorData = await response.json();
+        
+        // Validation errors
+        if (response.status === 422 && errorData.detail && Array.isArray(errorData.detail)) {
+          const validationErrors = errorData.detail
+            .map((err: { loc: string[]; msg: string }) => `${err.loc.join('.')}: ${err.msg}`)
+            .join(', ');
+          errorDetail = validationErrors;
+        } else {
+          errorDetail = errorData.detail || errorData.message;
+        }
       } catch {
         errorDetail = response.statusText;
       }
 
       throw new ApiException(
         response.status,
-        `API Error: ${response.statusText}`,
+        errorDetail || `API Error: ${response.statusText}`,
         errorDetail
       );
     }
@@ -211,7 +214,7 @@ export async function apiRequest<T>(
       throw error;
     }
     if (error instanceof TypeError) {
-      throw new ApiException(0, "Network error - please check your connection");
+      throw new ApiException(0, "Cannot connect to server");
     }
     throw error;
   }

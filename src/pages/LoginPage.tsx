@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../features/auth/hooks/useAuth";
 import { AuthCard } from "../features/auth/components/AuthCard";
@@ -8,27 +7,15 @@ import type { LoginCredentials } from "../features/auth/types/auth.types";
 function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  
-  const [error, setError] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleLogin = async (credentials: LoginCredentials) => {
-    setError("");
-    setIsLoading(true);
-
-    try {
-      await login(credentials);
-      navigate("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setIsLoading(false);
-    }
+    await login(credentials);
+    navigate("/");
   };
 
   return (
     <AuthCard subtitle="Sign in to your account">
-      <LoginForm onSubmit={handleLogin} isLoading={isLoading} error={error} />
+      <LoginForm onSubmit={handleLogin} />
       
       <div className="mt-6 text-center">
         <p className="text-gray-600 text-sm">
