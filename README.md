@@ -12,6 +12,7 @@
 
 - [Overview](#overview)
 - [Features](#features)
+- [UML Activity Diagrams](#uml-activity-diagrams)
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -37,6 +38,25 @@ BioScopeAI Web is a cutting-edge frontend application designed for biological im
 - 👤 **User Management** - Admin panel for user and system administration
 - 🎨 **Modern UI/UX** - Clean, responsive design with TailwindCSS
 - ⚡ **High Performance** - Optimized build with Vite and React 19
+
+## 📊 UML Activity Diagrams
+
+Comprehensive UML activity diagrams documenting all major user workflows are available in the [`docs/diagrams`](./docs/diagrams) directory:
+
+- **[User Authentication](./docs/diagrams/user-authentication.md)** - Login, registration, and token management flows
+- **[Dataset Management](./docs/diagrams/dataset-management.md)** - Create, view, edit, and delete datasets
+- **[Image Classification](./docs/diagrams/image-classification.md)** - AI-powered classification workflows and result viewing
+- **[Device & Streaming](./docs/diagrams/device-streaming.md)** - Device management and real-time WebRTC streaming
+- **[Admin Operations](./docs/diagrams/admin-operations.md)** - User management and system monitoring
+
+These diagrams provide detailed visualization of:
+- User interaction flows
+- System decision points
+- API integration patterns
+- Error handling procedures
+- Success and failure paths
+
+Perfect for understanding the application architecture, onboarding new developers, or planning test scenarios.
 
 ## 🛠️ Technology Stack
 
