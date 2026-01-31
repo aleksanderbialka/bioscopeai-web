@@ -120,13 +120,13 @@ export function UserProfileModal({ user, isOpen, onClose, onSave }: UserProfileM
 
           {error && <Alert variant="error">{error}</Alert>}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Personal Information Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="space-y-3 sm:space-y-4">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider">
                 Personal Information
               </h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <Input
                   label="First Name"
                   value={formData.first_name || ""}
@@ -145,8 +145,8 @@ export function UserProfileModal({ user, isOpen, onClose, onSave }: UserProfileM
             </div>
 
             {/* Contact Information Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="space-y-3 sm:space-y-4">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider">
                 Contact Information
               </h4>
               <Input
@@ -167,8 +167,8 @@ export function UserProfileModal({ user, isOpen, onClose, onSave }: UserProfileM
             </div>
 
             {/* Organization Information Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+            <div className="space-y-3 sm:space-y-4">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider">
                 Organization
               </h4>
               <Input
@@ -187,8 +187,8 @@ export function UserProfileModal({ user, isOpen, onClose, onSave }: UserProfileM
 
             {/* Password Section - Only in Edit Mode */}
             {isEditing && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+              <div className="space-y-3 sm:space-y-4">
+                <h4 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider">
                   Change Password (optional)
                 </h4>
                 <Input
@@ -199,31 +199,31 @@ export function UserProfileModal({ user, isOpen, onClose, onSave }: UserProfileM
                   placeholder="Leave blank to keep current password"
                 />
                 {formData.password && formData.password.length > 0 && formData.password.length < 8 && (
-                  <p className="text-sm text-red-600">Password must be at least 8 characters</p>
+                  <p className="text-xs sm:text-sm text-red-600">Password must be at least 8 characters</p>
                 )}
               </div>
             )}
 
             {/* Footer Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
               {isEditing ? (
                 <>
                   <button
                     type="button"
                     onClick={handleCancel}
                     disabled={isSubmitting}
-                    className="flex-1 py-3.5 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-xl transition-all duration-200 font-semibold focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full sm:flex-1 py-3 sm:py-3.5 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-xl transition-all duration-200 font-semibold focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting || (!!formData.password && formData.password.length < 8)}
-                    className="flex-1 py-3.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-sky-500/25 hover:shadow-xl hover:shadow-sky-500/30 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full sm:flex-1 py-3 sm:py-3.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-sky-500/25 hover:shadow-xl hover:shadow-sky-500/30 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         Saving...
                       </>
                     ) : (
@@ -236,15 +236,15 @@ export function UserProfileModal({ user, isOpen, onClose, onSave }: UserProfileM
                   <button
                     type="button"
                     onClick={() => setIsEditing(true)}
-                    className="flex-1 py-3.5 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-xl transition-all duration-200 font-semibold focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 flex items-center justify-center gap-2"
+                    className="w-full sm:flex-1 py-3 sm:py-3.5 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-xl transition-all duration-200 font-semibold focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 flex items-center justify-center gap-2 text-sm sm:text-base"
                   >
-                    <Edit className="w-5 h-5" />
+                    <Edit className="w-4 h-4 sm:w-5 sm:h-5" />
                     Edit Profile
                   </button>
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 py-3.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-sky-500/25 hover:shadow-xl hover:shadow-sky-500/30 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+                    className="w-full sm:flex-1 py-3 sm:py-3.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-sky-500/25 hover:shadow-xl hover:shadow-sky-500/30 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 text-sm sm:text-base"
                   >
                     Close Profile
                   </button>

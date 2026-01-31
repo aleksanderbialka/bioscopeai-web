@@ -74,7 +74,22 @@ export function useImageResults(imageId: string | null) {
     fetchResults();
   }, [imageId]);
 
-  return { results, isLoading, error };
+  const refetch = useCallback(async () => {
+    if (!imageId) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await getResultsForImage(imageId);
+      setResults(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch results");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [imageId]);
+
+  return { results, isLoading, error, refetch };
 }
 
 export function useClassificationJobResults(classificationId: string | null) {

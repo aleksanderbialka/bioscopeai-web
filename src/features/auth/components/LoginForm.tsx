@@ -7,17 +7,26 @@ import { Alert } from "../../../components/Alert";
 
 interface LoginFormProps {
   onSubmit: (credentials: LoginCredentials) => Promise<void>;
-  isLoading?: boolean;
-  error?: string;
 }
 
-export function LoginForm({ onSubmit, isLoading = false, error }: LoginFormProps) {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
+export function LoginForm({ onSubmit }: LoginFormProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    await onSubmit({ email, password });
+    setError("");
+    setIsLoading(true);
+
+    try {
+      await onSubmit({ email, password });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
