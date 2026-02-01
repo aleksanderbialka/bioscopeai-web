@@ -95,39 +95,6 @@ function StreamPage() {
           <StreamStats stats={stats} isConnected={isConnected} />
         </div>
       </div>
-
-      {/* Connection Instructions */}
-      {!isConnected && !isConnecting && (
-        <Card>
-          <CardBody>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              How to Test WebRTC
-            </h3>
-            <ol className="space-y-2 text-sm text-gray-600">
-              <li className="flex gap-2">
-                <span className="font-semibold text-sky-600">1.</span>
-                <span>Make sure your backend WebRTC server is running</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="font-semibold text-sky-600">2.</span>
-                <span>Enter the correct WebSocket URL (default: ws://localhost:8001/api/ws/webrtc)</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="font-semibold text-sky-600">3.</span>
-                <span>Enter a valid device ID that exists in your backend</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="font-semibold text-sky-600">4.</span>
-                <span>Click "Connect" to establish WebRTC connection</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="font-semibold text-sky-600">5.</span>
-                <span>The video stream will appear once the connection is established</span>
-              </li>
-            </ol>
-          </CardBody>
-        </Card>
-      )}
     </div>
   );
 }
