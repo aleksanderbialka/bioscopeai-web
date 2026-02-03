@@ -3,6 +3,7 @@ ARG REGISTRY_NGINX_IMAGE=nginx:1.27-alpine
 
 FROM ${REGISTRY_NODE_IMAGE} AS build
 
+ARG VITE_API_BASE_URL=http://localhost:8000
 ARG BUILD_DATE
 ARG CURRENT_BRANCH
 ARG BUILD_VERSION
@@ -25,6 +26,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 RUN npm run build
 
