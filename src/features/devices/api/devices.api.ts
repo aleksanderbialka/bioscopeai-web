@@ -2,7 +2,7 @@ import type { Device, CreateDeviceDto, UpdateDeviceDto } from "../types/device.t
 import { apiRequest } from "../../../api/apiClient";
 
 export async function getDevices(): Promise<Device[]> {
-  return apiRequest<Device[]>("/api/devices");
+  return apiRequest<Device[]>("/api/devices/");
 }
 
 export async function getDeviceById(deviceId: string): Promise<Device> {
